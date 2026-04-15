@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAA Algorithm Visualizer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#141e33',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Smooth transitions */
+        .bar-transition { transition: height 0.3s ease, background-color 0.3s ease; }
+        .cell-transition { transition: all 0.3s ease; }
+        .opacity-dim { opacity: 0.2; transform: scale(0.95); transition: all 0.3s; }
+        .opacity-full { opacity: 1; transform: scale(1); transition: all 0.3s; }
+        
+        /* Stage grid bg */
+        .stage-bg {
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 h-screen w-screen overflow-hidden flex font-sans selection:bg-cyan-500/30">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full z-10 flex-shrink-0">
+        <div class="p-6 border-b border-slate-800 flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-500/50 flex items-center justify-center text-cyan-400">
+                <i data-lucide="cpu" class="w-5 h-5"></i>
+            </div>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-indigo-400 tracking-tight">AlgoViz</h1>
+        </div>
+        
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-2">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-3">Algorithms</p>
+            
+            <button onclick="switchAlgo('max_subarray')" id="nav-max_subarray" class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                <i data-lucide="split-square-vertical" class="w-4 h-4 mr-3"></i>
+                Max Subarray (D&C)
+            </button>
+            <button onclick="switchAlgo('binary_search')" id="nav-binary_search" class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors">
+                <i data-lucide="search" class="w-4 h-4 mr-3"></i>
+                Binary Search (Decrease)
+            </button>
+            <button onclick="switchAlgo('knapsack')" id="nav-knapsack" class="w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors">
+                <i data-lucide="layout-grid" class="w-4 h-4 mr-3"></i>
+                0/1 Knapsack (DP)
+            </button>
+        </nav>
+        
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 text-center">
+            DAA Mini Project Visualizer
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col min-w-0 relative">
+        <!-- Top Bar -->
+        <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 flex-shrink-0 z-10 gap-3">
+            <h2 id="current-algo-title" class="text-lg font-medium text-slate-200">Maximum Subarray</h2>
+            
+            <!-- Controls -->
+            <div class="flex items-center gap-3">
+                <div class="flex items-center space-x-2 bg-slate-950 rounded-xl p-2 border border-slate-800">
+                    <label for="manual-array-input" class="text-xs text-slate-400">Array</label>
+                    <input id="manual-array-input" type="text" class="w-64 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40" placeholder="e.g. -2, 1, 3, 4" />
+                    <button id="manual-array-apply" onclick="applyManualArray()" class="px-3 py-1.5 rounded-lg text-xs font-medium text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-colors">Apply</button>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-slate-950 rounded-xl p-1 border border-slate-800">
+                    <button onclick="resetAlgo()" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition text-sm" title="Reset">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                    <div class="w-px h-5 bg-slate-800 mx-1"></div>
+                    <button onclick="togglePlay()" id="btn-play" class="p-2 rounded-lg text-cyan-400 hover:bg-cyan-500/20 transition text-sm flex items-center space-x-1" title="Auto-Play">
+                        <i data-lucide="play" class="w-4 h-4" id="icon-play"></i>
+                        <span class="sr-only">Play</span>
+                    </button>
+                    <button onclick="stepForward()" class="p-2 rounded-lg text-slate-300 hover:bg-slate-800 transition text-sm flex items-center space-x-1" title="Step Forward">
+                        <i data-lucide="step-forward" class="w-4 h-4"></i>
+                    </button>
+                    <div class="w-px h-5 bg-slate-800 mx-1"></div>
+                    <div class="flex items-center px-2 space-x-2 text-xs text-slate-400">
+                        <span>Speed</span>
+                        <input type="range" id="speed-slider" min="100" max="2000" step="100" value="800" class="w-20 accent-cyan-500" onchange="updateSpeed(event)" title="Visualization speed">
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stage Area Container -->
+        <div class="flex-1 flex overflow-hidden">
+            
+            <!-- Stage -->
+            <div class="flex-1 bg-slate-950 stage-bg relative overflow-hidden flex flex-col">
+                <!-- Status/Log Bar overlay -->
+                <div class="absolute top-4 left-4 right-4 z-10">
+                    <div id="step-description-banner" class="bg-slate-800/80 backdrop-blur border border-slate-700 p-4 rounded-xl shadow-xl flex items-start space-x-3 transition-all duration-300 transform translate-y-0">
+                        <div class="mt-0.5 text-cyan-400"><i data-lucide="info" class="w-5 h-5"></i></div>
+                        <div class="flex-1">
+                            <p id="step-desc-text" class="text-sm font-medium text-slate-200">Initializing algorithm...</p>
+                            <div id="step-vars-text" class="text-xs text-slate-400 mt-1 font-mono break-all font-semibold max-h-12 overflow-y-auto"></div>
+                        </div>
+                        <div class="font-mono text-xs text-slate-500 bg-slate-950 px-2 py-1 rounded">
+                            Step <span id="step-counter">0</span>/<span id="step-total">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization Mount Point -->
+                <div id="viz-container" class="flex-1 flex items-center justify-center p-8 mt-24 overflow-auto">
+                    <!-- Dynamic rendering here -->
+                </div>
+                
+                <!-- Progress Bar -->
+                <div class="h-1 bg-slate-900 w-full absolute bottom-0 left-0">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Theory Panel -->
+            <aside class="w-72 bg-slate-900 border-l border-slate-800 flex flex-col flex-shrink-0 z-10 overflow-y-auto custom-scrollbar">
+                <div class="p-5 border-b border-slate-800">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center">
+                        <i data-lucide="book-open" class="w-3.5 h-3.5 mr-2"></i> Theory & Info
+                    </h3>
+                    
+                    <div id="theory-content" class="space-y-4">
+                        <!-- Dynamic Theory -->
+                    </div>
+                </div>
+                
+                <div class="p-5 flex-1">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center">
+                        <i data-lucide="terminal" class="w-3.5 h-3.5 mr-2"></i> Execution Log
+                    </h3>
+                    <div id="execution-log" class="font-mono text-xs space-y-2 text-slate-400 pb-10">
+                        <!-- Logs here -->
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // ----------------------------------------------------
+        // Configuration & Data
+        // ----------------------------------------------------
+        let arrayData = [-1, 3, -4, 5, 2, -1, 3, -6, 2];
+        let bsArray = [0, 2, 4, 6, 8, 10, 12, 14, 16]; // Sorted input expected
+        
+        const kpValues = [60, 100, 120];
+        const kpWeights = [1, 2, 3];
+        const kpCapacity = 5;
+
+        const infoText = {
+            max_subarray: {
+                title: "Maximum Subarray (Divide & Conquer)",
+                complexity: "O(n log n)",
+                recurrence: "T(n) = 2T(n/2) + Θ(n)",
+                desc: "Finds the contiguous subarray with the largest sum by recursively dividing the array in half and finding the max crossing the midpoint."
+            },
+            binary_search: {
+                title: "Binary Search (Decrease & Conquer)",
+                complexity: "O(log n)",
+                recurrence: "T(n) = T(n/2) + Θ(1)",
+                desc: "Searches a sorted array by repeatedly dividing the search interval in half. Here, condition A[i] = 2i is checked."
+            },
+            knapsack: {
+                title: "0/1 Knapsack (Dynamic Programming)",
+                complexity: "O(n * W)",
+                recurrence: "dp[i][w] = max(val + dp[i-1][w-wt], dp[i-1][w])",
+                desc: "Finds the maximum value we can pack in a knapsack. We build a table to avoid recomputing overlapping subproblems."
+            }
+        };
+
+        // ----------------------------------------------------
+        // State Management
+        // ----------------------------------------------------
+        let state = {
+            algo: 'max_subarray',
+            steps: [],
+            currIdx: 0,
+            playing: false,
+            speed: 800, // ms
+            interval: null
+        };
+
+        // ----------------------------------------------------
+        // Generators / Compilers for Step States
+        // ----------------------------------------------------
+        
+        // --- Max Subarray ---
+        function generateMaxSubarraySteps() {
+            let steps = [];
+            let A = [...arrayData];
+            const MAX_VAL = Math.max(...A.map(Math.abs));
+            
+            function pushStep(desc, vars, left, right, crossLeft = -1, crossRight = -1, highlightRange = null, resultType = '') {
+                steps.push({
+                    type: 'max_subarray', desc, vars,
+                    A, left, right, crossLeft, crossRight, highlightRange, resultType, MAX_VAL
+                });
+            }
+
+            function maxCrossingSum(arr, l, m, h, depth) {
+                pushStep(`Calculating max crossing sum for range [${l}, ${h}] around mid ${m}`, `l=${l}, m=${m}, h=${h}, depth=${depth}`, l, h, m, m, [l, h], 'cross_calc');
+                
+                let sum = 0;
+                let left_sum = -Infinity;
+                let max_left = m;
+                for (let i = m; i >= l; i--) {
+                    sum += arr[i];
+                    if (sum > left_sum) { left_sum = sum; max_left = i; }
+                }
+                
+                sum = 0;
+                let right_sum = -Infinity;
+                let max_right = m + 1;
+                for (let i = m + 1; i <= h; i++) {
+                    sum += arr[i];
+                    if (sum > right_sum) { right_sum = sum; max_right = i; }
+                }
+                
+                pushStep(`Crossing sum result: ${left_sum + right_sum} (left part: ${left_sum}, right part: ${right_sum})`, `max_left=${max_left}, max_right=${max_right}, sum=${left_sum + right_sum}`, l, h, max_left, max_right, [max_left, max_right], 'cross_result');
+                return { sum: left_sum + right_sum, left: max_left, right: max_right };
+            }
+
+            function maxSubArraySum(arr, l, h, depth) {
+                let v = { l, h, depth };
+                pushStep(`Exploring subarray range [${l}, ${h}]`, `l=${l}, h=${h}, depth=${depth}`, l, h, -1, -1, [l, h], 'divide');
+                
+                if (l === h) {
+                    pushStep(`Base case reached at index ${l}: value ${arr[l]}`, `Index=${l}, Val=${arr[l]}`, l, h, -1, -1, [l, l], 'base');
+                    return { sum: arr[l], left: l, right: h };
+                }
+                
+                let m = Math.floor((l + h) / 2);
+                let L = maxSubArraySum(arr, l, m, depth + 1);
+                let R = maxSubArraySum(arr, m + 1, h, depth + 1);
+                let C = maxCrossingSum(arr, l, m, h, depth + 1);
+                
+                let maxResult;
+                if (L.sum >= R.sum && L.sum >= C.sum) maxResult = L;
+                else if (R.sum >= L.sum && R.sum >= C.sum) maxResult = R;
+                else maxResult = C;
+
+                pushStep(`Max found for range [${l}, ${h}] is ${maxResult.sum}`, `range=[${maxResult.left}, ${maxResult.right}], sum=${maxResult.sum}`, l, h, maxResult.left, maxResult.right, [maxResult.left, maxResult.right], 'combine');
+                return maxResult;
+            }
+
+            pushStep("Initial Array", "A = " + JSON.stringify(A), 0, A.length - 1, -1, -1, null, 'init');
+            let res = maxSubArraySum(A, 0, A.length - 1, 0);
+            pushStep(`Algorithm Complete! Max Sum = ${res.sum}`, `Final Range = [${res.left}, ${res.right}]`, 0, A.length-1, res.left, res.right, [res.left, res.right], 'done');
+            
+            return steps;
+        }
+
+        // --- Binary Search ---
+        function generateBinarySearchSteps() {
+            let steps = [];
+            let A = [...bsArray];
+            
+            function pushStep(desc, vars, l, h, m, found, done) {
+                steps.push({ type: 'binary_search', desc, vars, A, l, h, m, found, done });
+            }
+
+            function searchRange(l, h, depth) {
+                if (l > h) {
+                    pushStep(`Range exhausted at depth ${depth}`, `low=${l}, high=${h}`, l, h, -1, false, false);
+                    return -1;
+                }
+
+                let m = Math.floor((l + h) / 2);
+                pushStep(`Depth ${depth}: check midpoint ${m}`, `low=${l}, mid=${m}, high=${h}, A[mid]=${A[m]}, 2*mid=${2 * m}`, l, h, m, false, false);
+
+                if (A[m] === 2 * m) {
+                    pushStep(`Found fixed point at index ${m}: A[${m}] = 2*${m}`, `low=${l}, mid=${m}, high=${h}`, l, h, m, true, false);
+                    return m;
+                }
+
+                // Transform condition A[i] = 2i into i = A[i]/2 and prune impossible ranges.
+                const halfVal = A[m] / 2;
+                const leftHigh = Math.min(m - 1, Math.floor(halfVal));
+                const rightLow = Math.max(m + 1, Math.ceil(halfVal));
+
+                pushStep(
+                    `Prune and recurse from midpoint ${m}`,
+                    `A[mid]/2=${halfVal}, left=[${l}, ${leftHigh}], right=[${rightLow}, ${h}]`,
+                    l,
+                    h,
+                    m,
+                    false,
+                    false
+                );
+
+                let leftResult = -1;
+                if (l <= leftHigh) {
+                    leftResult = searchRange(l, leftHigh, depth + 1);
+                }
+                if (leftResult !== -1) return leftResult;
+
+                if (rightLow <= h) {
+                    return searchRange(rightLow, h, depth + 1);
+                }
+
+                return -1;
+            }
+
+            pushStep("Initial Setup: Searching for index i where A[i] == 2i", `low=0, high=${A.length - 1}, sorted array required`, 0, A.length - 1, -1, false, false);
+            const result = searchRange(0, A.length - 1, 0);
+
+            if (result === -1) {
+                pushStep(`Search Complete. No index satisfies A[i] = 2i`, `All valid ranges checked`, 0, A.length - 1, -1, false, true);
+            } else {
+                pushStep(`Search Complete. Fixed point found at index ${result}`, `A[${result}] = ${A[result]} = 2*${result}`, result, result, result, true, true);
+            }
+
+            return steps;
+        }
+
+        function generateKnapsackSteps() {
+            let steps = [];
+            let n = kpValues.length;
+            let W = kpCapacity;
+            let wt = kpWeights;
+            let val = kpValues;
+            
+            let dp = Array.from({ length: n + 1 }, () => Array(W + 1).fill(0));
+            
+            function pushStep(desc, vars, i, w, srcAbove, srcInc, valToAdd, newValue, computedDp) {
+                // deep copy 2d array
+                let dpCopy = computedDp.map(row => [...row]);
+                steps.push({ type: 'knapsack', desc, vars, n, W, wt, val, dp: dpCopy, currI: i, currW: w, srcAbove, srcInc });
+            }
+
+            pushStep("Initial Setup: DP Table filled with 0s for base cases (i=0 or w=0)", `Weights=[${wt}], Values=[${val}], Max Capacity=${W}`, -1, -1, null, null, 0, 0, dp);
+
+            for (let i = 1; i <= n; i++) {
+                for (let w = 1; w <= W; w++) {
+                    pushStep(`Evaluating Item ${i} (Weight: ${wt[i-1]}, Value: ${val[i-1]}) at capacity ${w}`, `i=${i}, w=${w}`, i, w, {r: i-1, c: w}, null, 0, 0, dp);
+                    
+                    if (wt[i - 1] <= w) {
+                        let valIncluded = val[i - 1] + dp[i - 1][w - wt[i - 1]];
+                        let valExcluded = dp[i - 1][w];
+                        dp[i][w] = Math.max(valIncluded, valExcluded);
+                        
+                        pushStep(`Capacity enough. Max(exclude, include) -> Max(${valExcluded}, ${val[i-1]} + ${dp[i-1][w-wt[i-1]]}) = ${dp[i][w]}`, 
+                                `dp[${i}][${w}] = ${dp[i][w]}`, i, w, {r: i-1, c: w}, {r: i-1, c: w - wt[i-1]}, val[i-1], dp[i][w], dp);
+                    } else {
+                        dp[i][w] = dp[i - 1][w];
+                        pushStep(`Capacity exceeded (${wt[i-1]} > ${w}). Cannot include Item ${i}. Copy from above.`, 
+                                `dp[${i}][${w}] = dp[${i-1}][${w}] = ${dp[i][w]}`, i, w, {r: i-1, c: w}, null, 0, dp[i][w], dp);
+                    }
+                }
+            }
+            
+            pushStep(`Knapsack Complete! Max Value = ${dp[n][W]}`, `Result found at dp[${n}][${W}]`, -1, -1, null, null, 0, 0, dp);
+            
+            return steps;
+        }
+
+        // ----------------------------------------------------
+        // Rendering Framework
+        // ----------------------------------------------------
+
+        function initAlgo(algoName) {
+            state.algo = algoName;
+            state.playing = false;
+            if(state.interval) clearInterval(state.interval);
+            updatePlayIcon();
+            
+            // Generate steps
+            if (algoName === 'max_subarray') state.steps = generateMaxSubarraySteps();
+            else if (algoName === 'binary_search') state.steps = generateBinarySearchSteps();
+            else if (algoName === 'knapsack') state.steps = generateKnapsackSteps();
+            
+            state.currIdx = 0;
+            
+            // Update UI
+            document.getElementById('current-algo-title').innerText = infoText[algoName].title;
+            
+            // Theory setup
+            const theoryHtml = `
+                <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 shadow-inner">
+                    <p class="text-xs text-slate-300 font-medium mb-1 flex items-center"><i data-lucide="clock" class="w-3 h-3 mr-1 text-cyan-400"></i> Time</p>
+                    <p class="text-sm font-mono text-cyan-300">${infoText[algoName].complexity}</p>
+                </div>
+                <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50 shadow-inner mt-2">
+                    <p class="text-xs text-slate-300 font-medium mb-1 inline-flex items-center"><i data-lucide="activity" class="w-3 h-3 mr-1 text-indigo-400"></i> Recurrence</p>
+                    <p class="text-sm font-mono text-indigo-300">${infoText[algoName].recurrence}</p>
+                </div>
+                <div class="bg-slate-800/20 rounded-lg p-3 text-xs leading-relaxed text-slate-400 mt-2">
+                    ${infoText[algoName].desc}
+                </div>
+            `;
+            document.getElementById('theory-content').innerHTML = theoryHtml;
+            document.getElementById('execution-log').innerHTML = ''; // clear logs
+            lucide.createIcons();
+            
+            // Nav Highlighting
+            ['max_subarray', 'binary_search', 'knapsack'].forEach(nm => {
+                const nav = document.getElementById('nav-' + nm);
+                if(nm === algoName) {
+                    nav.classList.add('bg-cyan-500/10', 'text-cyan-400', 'border', 'border-cyan-500/20');
+                    nav.classList.remove('text-slate-400');
+                } else {
+                    nav.classList.remove('bg-cyan-500/10', 'text-cyan-400', 'border', 'border-cyan-500/20');
+                    nav.classList.add('text-slate-400');
+                }
+            });
+
+            updateManualInputUI();
+
+            renderStep();
+        }
+
+        function switchAlgo(nm) { initAlgo(nm); }
+        function resetAlgo() { state.currIdx = 0; renderStep(); document.getElementById('execution-log').innerHTML = ''; }
+        
+        function updateSpeed(e) { state.speed = 2100 - parseInt(e.target.value); }
+
+        function togglePlay() {
+            state.playing = !state.playing;
+            updatePlayIcon();
+            if (state.playing) {
+                state.interval = setInterval(() => {
+                    if (state.currIdx < state.steps.length - 1) {
+                        stepForward();
+                    } else {
+                        togglePlay(); // auto stop at end
+                    }
+                }, state.speed);
+            } else {
+                clearInterval(state.interval);
+            }
+        }
+
+        function updatePlayIcon() {
+            const icon = document.getElementById('icon-play');
+            icon.setAttribute('data-lucide', state.playing ? 'pause' : 'play');
+            lucide.createIcons();
+            
+            const btn = document.getElementById('btn-play');
+            if (state.playing) {
+                btn.classList.add('bg-cyan-500/20', 'text-cyan-300');
+            } else {
+                btn.classList.remove('bg-cyan-500/20', 'text-cyan-300');
+            }
+        }
+
+        function stepForward() {
+            if (state.currIdx < state.steps.length - 1) {
+                state.currIdx++;
+                renderStep();
+            }
+        }
+
+        function updateManualInputUI() {
+            const input = document.getElementById('manual-array-input');
+            const applyBtn = document.getElementById('manual-array-apply');
+
+            if (state.algo === 'max_subarray') {
+                input.disabled = false;
+                applyBtn.disabled = false;
+                input.placeholder = 'e.g. -2, 1, 3, 4';
+                input.value = arrayData.join(', ');
+            } else if (state.algo === 'binary_search') {
+                input.disabled = false;
+                applyBtn.disabled = false;
+                input.placeholder = 'Sorted: e.g. 0, 2, 5, 8, 12';
+                input.value = bsArray.join(', ');
+            } else {
+                input.disabled = true;
+                applyBtn.disabled = true;
+                input.placeholder = 'Manual input works for Max Subarray and Binary Search';
+                input.value = '';
+            }
+        }
+
+        function applyManualArray() {
+            const input = document.getElementById('manual-array-input');
+            const raw = input.value.trim();
+
+            if (!raw) {
+                alert('Please enter comma-separated numbers.');
+                return;
+            }
+
+            const values = raw.split(',').map(v => v.trim()).filter(v => v.length > 0);
+            if (values.length === 0) {
+                alert('Please enter at least one number.');
+                return;
+            }
+
+            const parsed = values.map(Number);
+            if (parsed.some(v => Number.isNaN(v))) {
+                alert('Invalid input. Use only numbers separated by commas.');
+                return;
+            }
+
+            if (state.algo === 'max_subarray') {
+                arrayData = parsed;
+                initAlgo('max_subarray');
+                return;
+            }
+
+            if (state.algo === 'binary_search') {
+                for (let i = 1; i < parsed.length; i++) {
+                    if (parsed[i] < parsed[i - 1]) {
+                        alert('Binary Search requires a sorted array in ascending order.');
+                        return;
+                    }
+                }
+                bsArray = parsed;
+                initAlgo('binary_search');
+                return;
+            }
+
+            alert('Manual input is only available for Max Subarray and Binary Search.');
+        }
+        
+        function logExecution(desc, vars) {
+             const logContainer = document.getElementById('execution-log');
+             const logEl = document.createElement('div');
+             logEl.className = "border-l-2 border-slate-700 pl-3 py-1 mt-1 opacity-0 transition-opacity duration-500";
+             logEl.innerHTML = `<span class="text-cyan-300 mr-2">[${state.currIdx}]</span><span class="text-slate-300">${desc}</span> <br/><span class="text-slate-500 text-[10px] break-all">${vars}</span>`;
+             logContainer.prepend(logEl);
+             setTimeout(() => logEl.classList.remove('opacity-0'), 50);
+        }
+
+        function renderStep() {
+            const s = state.steps[state.currIdx];
+            document.getElementById('step-desc-text').innerText = s.desc;
+            document.getElementById('step-vars-text').innerText = s.vars;
+            document.getElementById('step-counter').innerText = state.currIdx;
+            document.getElementById('step-total').innerText = state.steps.length - 1;
+            
+            let pct = (state.currIdx / (state.steps.length - 1)) * 100;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            
+            logExecution(s.desc, s.vars);
+
+            const viz = document.getElementById('viz-container');
+            viz.innerHTML = ''; // clear
+
+            if (s.type === 'max_subarray') renderMaxSubarray(s, viz);
+            else if (s.type === 'binary_search') renderBinarySearch(s, viz);
+            else if (s.type === 'knapsack') renderKnapsack(s, viz);
+        }
+
+        // ----------------------------------------------------
+        // Component Renderers
+        // ----------------------------------------------------
+
+        function renderMaxSubarray(s, container) {
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex items-end justify-center space-x-2 h-64 w-full px-10";
+            
+            const maxH = 200; // max px height
+            
+            s.A.forEach((val, i) => {
+                let isLeft = (i >= s.left && i <= s.right && s.resultType === 'divide');
+                let isCross = (s.crossLeft !== -1 && i >= s.crossLeft && i <= s.crossRight);
+                let isHighlight = s.highlightRange && (i >= s.highlightRange[0] && i <= s.highlightRange[1]);
+                let isDone = s.resultType === 'done' && (i >= s.crossLeft && i <= s.crossRight);
+                
+                let colorClass = 'bg-slate-700 border-slate-600';
+                if (isDone) colorClass = 'bg-emerald-500 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]';
+                else if (isCross) colorClass = 'bg-indigo-500 border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]';
+                else if (isHighlight) colorClass = 'bg-cyan-500 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]';
+                
+                let opacityClass = 'opacity-full';
+                if (s.left !== undefined && s.right !== undefined) {
+                    if (s.left !== -1 && (i < s.left || i > s.right)) {
+                         opacityClass = 'opacity-dim';
+                    }
+                }
+                
+                const barH = (Math.abs(val) / s.MAX_VAL) * maxH + 40; // baseline 40
+                
+                const col = document.createElement('div');
+                col.className = `flex flex-col items-center group w-12 ${opacityClass} cell-transition`;
+                
+                const text = document.createElement('div');
+                text.className = `mb-2 font-mono text-sm font-bold ${val < 0 ? 'text-rose-400' : 'text-slate-200'}`;
+                text.innerText = val;
+                
+                const bar = document.createElement('div');
+                bar.className = `w-full rounded-t-md border-t-2 bar-transition relative ${colorClass}`;
+                bar.style.height = `${barH}px`;
+                
+                // Index label
+                const idx = document.createElement('div');
+                idx.className = "mt-2 text-[10px] text-slate-500 font-mono";
+                idx.innerText = `[${i}]`;
+
+                col.appendChild(text);
+                col.appendChild(bar);
+                col.appendChild(idx);
+                wrapper.appendChild(col);
+            });
+            
+            container.appendChild(wrapper);
+        }
+
+        function renderBinarySearch(s, container) {
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex flex-col items-center justify-center w-full";
+            
+            const arrCont = document.createElement('div');
+            arrCont.className = "flex space-x-3 mb-10";
+            
+            s.A.forEach((val, i) => {
+                const isActive = (i >= s.l && i <= s.h);
+                const isMid = (i === s.m);
+                const isFound = s.found && isMid;
+                
+                let bgColor = isActive ? 'bg-slate-800 border-slate-600' : 'bg-slate-900 border-slate-800 opacity-dim';
+                let textColor = isActive ? 'text-slate-100' : 'text-slate-600';
+                
+                if (isMid && !s.found) {
+                     bgColor = 'bg-indigo-500/20 border-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.3)]';
+                     textColor = 'text-indigo-300 font-bold';
+                } else if (isFound) {
+                    bgColor = 'bg-emerald-500/20 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)] scale-110';
+                    textColor = 'text-emerald-400 font-bold';
+                }
+
+                const box = document.createElement('div');
+                box.className = `w-16 h-16 flex items-center justify-center rounded-xl border-2 cell-transition relative ${bgColor}`;
+                
+                const valText = document.createElement('span');
+                valText.className = `text-xl font-mono ${textColor}`;
+                valText.innerText = val;
+                
+                // Indicators
+                if (isMid) {
+                    const caret = document.createElement('div');
+                    caret.className = "absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center text-indigo-400";
+                    caret.innerHTML = `<i data-lucide="chevron-up" class="w-4 h-4 mb-0"></i><span class="text-[10px] uppercase font-bold">Mid</span>`;
+                    box.appendChild(caret);
+                }
+                if (i === s.l && i !== s.m) {
+                    const caret = document.createElement('div');
+                    caret.className = "absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center text-cyan-500 opacity-50";
+                    caret.innerHTML = `<i data-lucide="chevron-up" class="w-4 h-4 mb-0"></i><span class="text-[10px] uppercase font-bold">Low</span>`;
+                    box.appendChild(caret);
+                }
+                if (i === s.h && i !== s.m) {
+                    const caret = document.createElement('div');
+                    caret.className = "absolute -bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center text-cyan-500 opacity-50";
+                    caret.innerHTML = `<i data-lucide="chevron-up" class="w-4 h-4 mb-0"></i><span class="text-[10px] uppercase font-bold">High</span>`;
+                    box.appendChild(caret);
+                }
+                
+                box.appendChild(valText);
+                arrCont.appendChild(box);
+            });
+            
+            const targetInfo = document.createElement('div');
+            targetInfo.className = "flex space-x-4 items-center bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-xl mt-8";
+            targetInfo.innerHTML = `
+                <div class="text-sm text-slate-400">Search Condition:</div>
+                <div class="text-xl font-mono text-emerald-400 font-bold bg-slate-900 border border-slate-700 px-4 py-2 rounded-lg">A[i] = 2i</div>
+            `;
+            
+            wrapper.appendChild(arrCont);
+            wrapper.appendChild(targetInfo);
+            container.appendChild(wrapper);
+            lucide.createIcons();
+        }
+
+        function renderKnapsack(s, container) {
+            const wrapper = document.createElement('div');
+            wrapper.className = "flex flex-col items-center bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-2xl relative overflow-hidden";
+            
+            // Grid background detail
+            const gridBg = document.createElement('div');
+            gridBg.className = "absolute inset-0 opacity-10 pointer-events-none";
+            gridBg.style.backgroundImage = "radial-gradient(#64748b 1px, transparent 1px)";
+            gridBg.style.backgroundSize = "20px 20px";
+            wrapper.appendChild(gridBg);
+            
+            const table = document.createElement('table');
+            table.className = "border-collapse z-10 relative bg-slate-900/50 backdrop-blur rounded";
+            
+            // Header
+            const thead = document.createElement('thead');
+            const headTr = document.createElement('tr');
+            headTr.innerHTML = `<th class="p-3 text-xs text-slate-500 font-medium border-b border-r border-slate-800">Item \\ Cap</th>`;
+            for (let w = 0; w <= s.W; w++) {
+                let cellClass = (s.currW === w) ? 'text-indigo-400 font-bold bg-indigo-500/10' : 'text-slate-400 font-medium';
+                headTr.innerHTML += `<th class="p-3 text-sm font-mono border-b border-slate-800 min-w-[50px] ${cellClass}">${w}</th>`;
+            }
+            thead.appendChild(headTr);
+            table.appendChild(thead);
+            
+            // Body
+            const tbody = document.createElement('tbody');
+            for (let i = 0; i <= s.n; i++) {
+                const tr = document.createElement('tr');
+                
+                // Row header
+                let rowLabel = i === 0 ? '0 (None)' : `I${i}(${s.wt[i-1]}w, ${s.val[i-1]}v)`;
+                let rowHeadClass = (s.currI === i && i !== 0) ? 'text-cyan-400 font-bold bg-cyan-500/10 border-r border-slate-800' : 'text-slate-500 text-xs font-mono border-r border-slate-800';
+                tr.innerHTML = `<td class="p-3 ${rowHeadClass} whitespace-nowrap text-right">${rowLabel}</td>`;
+                
+                // Cells
+                for (let w = 0; w <= s.W; w++) {
+                    const isCurr = (i === s.currI && w === s.currW);
+                    const isSrcAbove = s.srcAbove && s.srcAbove.r === i && s.srcAbove.c === w;
+                    const isSrcInc = s.srcInc && s.srcInc.r === i && s.srcInc.c === w;
+                    
+                    let bgClass = '';
+                    let textClass = 'text-slate-300';
+                    let borderClass = 'border-slate-800/50';
+                    let scale = 'scale-100';
+                    let ring = '';
+
+                    // Active evaluation
+                    if (isCurr) {
+                        bgClass = 'bg-cyan-500/20';
+                        borderClass = 'border-cyan-500';
+                        textClass = 'text-cyan-300 font-bold';
+                        scale = 'scale-110 shadow-lg shadow-cyan-500/20 z-10 relative';
+                        ring = 'ring-2 ring-cyan-400';
+                    } 
+                    // Source dependencies
+                    else if (isSrcAbove) {
+                        bgClass = 'bg-indigo-500/20';
+                        borderClass = 'border-indigo-500/50';
+                        textClass = 'text-indigo-300';
+                        ring = 'ring-1 ring-indigo-500/50 border-dashed';
+                        scale = 'scale-105 z-10 relative';
+                    } 
+                    else if (isSrcInc) {
+                        bgClass = 'bg-emerald-500/20';
+                        borderClass = 'border-emerald-500/50';
+                        textClass = 'text-emerald-300';
+                        ring = 'ring-1 ring-emerald-500/50 border-dashed';
+                        scale = 'scale-105 z-10 relative';
+                    }
+
+                    tr.innerHTML += `<td class="p-0 border ${borderClass} text-center cell-transition">
+                        <div class="h-10 w-12 m-1 flex items-center justify-center font-mono rounded ${bgClass} ${textClass} ${scale} ${ring} transition-all duration-300 mx-auto">
+                            ${s.dp[i][w]}
+                        </div>
+                    </td>`;
+                }
+                tbody.appendChild(tr);
+            }
+            
+            table.appendChild(tbody);
+            wrapper.appendChild(table);
+            
+            // Legend
+            if (s.currI > 0) {
+                const legend = document.createElement('div');
+                legend.className = "flex space-x-4 mt-6 text-xs z-10 relative border-t border-slate-800 pt-4 w-full justify-center";
+                legend.innerHTML = `
+                    <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-indigo-500/20 border border-indigo-500/50 rounded"></div><span class="text-slate-400">Exclude (dp[i-1][w])</span></div>
+                    <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-emerald-500/20 border border-emerald-500/50 rounded"></div><span class="text-slate-400">Include (dp[i-1][w-wt])</span></div>
+                    <div class="flex items-center space-x-1.5"><div class="w-3 h-3 bg-cyan-500/20 border-2 border-cyan-400 rounded ring-1 ring-cyan-500/50 ring-offset-1 ring-offset-slate-900"></div><span class="text-cyan-400 font-medium">Computing Current</span></div>
+                `;
+                wrapper.appendChild(legend);
+            }
+            
+            container.appendChild(wrapper);
+        }
+
+        // Run Init
+        window.onload = () => {
+            initAlgo('max_subarray');
+            const manualInput = document.getElementById('manual-array-input');
+            manualInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') applyManualArray();
+            });
+        };
+
+    </script>
+</body>
+</html>
